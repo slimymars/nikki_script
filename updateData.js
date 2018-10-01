@@ -50,6 +50,7 @@ function updateDataMain(targetList) {
       var newDataCount = 0;
       
       for (var d = 2; d < dataLR -1; d++) {
+        Logger.log('check :' + returnHalfString(updData[d][1]));
         var find = 0;
         lSearch : for (var l = 0; l < localData.length; l++) {
           if (returnHalfString(updData[d][1]) == returnHalfString(localData[l][1])) {
