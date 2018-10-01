@@ -1,5 +1,6 @@
 // 最新情報の取得 --------------------------------------------------------------------------------------------------- //
 function updateData() {
+  Logger.clear();
   var localSpread = SpreadsheetApp.getActiveSpreadsheet();
   var category = ["ヘアスタイル", "ドレス", "コート", "トップス", "ボトムス", "靴下", "シューズ", "アクセサリー", "メイク"];
   var tgt = localSpread.getSheetByName("コーデ検索").getRange("D23").getValue();
@@ -49,15 +50,21 @@ function updateDataMain(targetList) {
       
       var newDataCount = 0;
       
+      var lst = new Array(localData.length);
+      for (var i = 0; i < lst.length; i++) {
+        lst[i] = i;
+      }
       for (var d = 2; d < dataLR -1; d++) {
-        Logger.log('check :' + returnHalfString(updData[d][1]));
+        Logger.log('check :' + updData[d][1]);
         var find = 0;
-        lSearch : for (var l = 0; l < localData.length; l++) {
+        lSearch : for (var idx = 0; idx < lst.length; idx++) {
+          var l = lst[idx];
           if (returnHalfString(updData[d][1]) == returnHalfString(localData[l][1])) {
             // ナンバー一致
             for (var a = 2; a < localData[l].length; a++){
               localData[l][a] = updData[d][a];
             }
+            lst.splice(idx, 1);
             find = 1;
             break lSearch;
           }
