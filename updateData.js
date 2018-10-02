@@ -184,3 +184,131 @@ function updateDataOfficial(targetList) {
     setScriptStatusError(logRange);
   }
 }
+
+/// add by slimymars --------------------------------------------------------------------------------------------
+function getHasList(targetName){
+  var localSpread = SpreadsheetApp.getActiveSpreadsheet();
+  var localSheet = localSpread.getSheetByName(targetName);
+  var localLR = localSheet.getLastRow();
+  var localData = localSheet.getRange(2, 1, localLR -1, 2).getValues();
+
+  var result = [];
+  for (var i = 0; i < localData.length; i++) {
+    if (localData[i][0] !== "") {
+      result.push({no: localData[i][1], has: localData[i][0]});
+    }
+  }
+  return result;
+}
+
+function getCategorySheetData(targetName){
+  Logger.log("データ取得: %s シート", targetName);
+
+  var dataSpread = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1O1hD48IWzzpGDwKOYlAraTCdO0EzfO1uRrKZ1Ut1luA/edit#gid=1015594370");
+  var dataSheet = dataSpread.getSheetByName(targetName);
+  var dataLR = dataSheet.getLastRow();
+  var updData = dataSheet.getRange(2, 2, dataLR -1, 17).getValues();
+
+  var result = [];
+
+  for (var i = 0; i < updData.length; i++) {
+    var d = updData[i];
+    result.push({
+      no: d[0],
+      values: d,
+      has: ""
+    });
+  }
+
+  return result;
+}
+
+officialSheetDataCache = [];
+
+function makeOfficialSheetDataCache() {
+  Logger.log("公式変更/追加シートデータ取得");
+  var dataSpread = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1O1hD48IWzzpGDwKOYlAraTCdO0EzfO1uRrKZ1Ut1luA/edit#gid=1015594370");
+  var dataSheet = dataSpread.getSheetByName("公式変更/追加");
+  var dataLR = dataSheet.getLastRow();
+  var updData = dataSheet.getRange(3, 2, dataLR -1, 17).getValues();
+
+  for (var i = 0; i < updData.length; i++) {
+    var d = updData[i];
+    var category = d[2];
+    var updRare = d[5]; // レア度ではなくSi or Goの文字列
+    if (category == "頭飾り" || category == "首飾り" || category == "腕飾り" || category == "手持品" || category == "特殊") {
+      // アクセのときは置換
+      category = "アクセサリー";
+    }
+    if (updRare == "si" || updRare == "go") {
+      officialSheetDataCache.push({
+        no: d[0],
+        category: category,
+        values: d,
+        has: ""
+      })
+    }
+  }
+}
+
+function getOfficialSheetData(targetName) {
+  if (officialSheetDataCache.length === 0){
+    makeOfficialSheetDataCache();
+  }
+  Logger.log("取得数: %s", officialSheetDataCache.length);
+  var result = officialSheetDataCache.filter(function (value) {
+    return value.category == targetName;
+  });
+  return result;
+}
+
+function margeOfficialToCategorySheet(officialDataList, categoryDataList){
+  var officialIncludeNoList = officialDataList.map(function (value) { return value.no });
+  var newList = categoryDataList.filter(function (value) {
+    return !officialIncludeNoList.includes(value.no);
+  });
+
+  return newList.concat(officialDataList);
+}
+
+function writeData(targetName, values){
+  var localSpread = SpreadsheetApp.getActiveSpreadsheet();
+  var toSheet = localSpread.getSheetByName(targetName);
+  var endR = toSheet.getLastRow();
+  toSheet.getRange(2, 1, endR -1, 17).clear({contentsOnly: true});
+  if (values.length > endR - 1){
+    toSheet.insertRows(endR+1, values.length-(endR-1));
+  }
+  var dataList = values.map(function (value) { return [value.has].concat(value.values); });
+  toSheet.getRange(2, 1, dataList.length+1, 18).setValues(dataList);
+}
+
+function setHasData(hasList, values){
+  var hash = values.reduce(function (ac, v) {
+    ac[v.no] = v;
+  }, {});
+  hasList.forEach(function (d) {
+    hash[d.no].has = d.has;
+  });
+}
+
+function dataUpdate(targetList){
+  targetList.forEach(function (target) {
+    Logger.log("所持リスト取得: %s", target);
+    setStartLog("所持リスト取得");
+    var nowHasList = getHasList(target);
+    Logger.log("カテゴリシート取得");
+    var categolyData = getCategorySheetData(target);
+    Logger.log("公式追加/更新シート取得");
+    var officialData = getOfficialSheetData(target);
+    Logger.log("データマージ");
+    var data = margeOfficialToCategorySheet(officialData, categolyData);
+    setHasData(nowHasList, data);
+    Logger.log("書き出し");
+    writeData(target, data);
+  });
+}
+
+function updateTest() {
+  dataUpdate(["アクセサリー"]);
+}
