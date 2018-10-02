@@ -6,20 +6,13 @@ function updateData() {
   var tgt = localSpread.getSheetByName("コーデ検索").getRange("D23").getValue();
   if (tgt == "アクセ以外") {
     category = ["ヘアスタイル", "ドレス", "コート", "トップス", "ボトムス", "靴下", "シューズ", "メイク"];
-    updateDataMain(category);
-    updateDataOfficial(category);
-  } else if (tgt == 'アクセサリー') {
-    // アクセのときはアクセシートのみ（処理落ち対策）
-    category = [tgt];
-    updateDataMain(category);
+    dataUpdate(category);
   } else if (tgt != '') {
     category = [tgt];
-    updateDataMain(category);
-    updateDataOfficial(category);
+    dataUpdate(category);
   } else {
     // ブランクのとき、とりあえず起動
-    updateDataMain(category);
-    updateDataOfficial(category);
+    dataUpdate(category);
   }
 }
 
@@ -186,9 +179,25 @@ function updateDataOfficial(targetList) {
 }
 
 /// add by slimymars --------------------------------------------------------------------------------------------
+function getLocalSheet(target) {
+  if (getLocalSheet.memo && getLocalSheet.memo[target]) {return getLocalSheet.memo[target]}
+  if (!getLocalSheet.memo) {getLocalSheet.memo = {}}
+  getLocalSheet.memo[target] = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(target);
+  return getLocalSheet.memo[target];
+}
+
+function getDataSheet(target) {
+  if (getDataSheet.memo && getDataSheet.memo[target]) { return getDataSheet.memo[target]; }
+  if (!getDataSheet.spld) { 
+    getDataSheet.spld = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1O1hD48IWzzpGDwKOYlAraTCdO0EzfO1uRrKZ1Ut1luA/edit#gid=1015594370");
+    getDataSheet.memo = {};
+  }
+  getDataSheet.memo[target] = getDataSheet.spld.getSheetByName(target);
+  return getDataSheet.memo[target];
+}
+
 function getHasList(targetName){
-  var localSpread = SpreadsheetApp.getActiveSpreadsheet();
-  var localSheet = localSpread.getSheetByName(targetName);
+  var localSheet = getLocalSheet(targetName);
   var localLR = localSheet.getLastRow();
   var localData = localSheet.getRange(2, 1, localLR -1, 2).getValues();
 
@@ -204,8 +213,7 @@ function getHasList(targetName){
 function getCategorySheetData(targetName){
   Logger.log("データ取得: %s シート", targetName);
 
-  var dataSpread = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1O1hD48IWzzpGDwKOYlAraTCdO0EzfO1uRrKZ1Ut1luA/edit#gid=1015594370");
-  var dataSheet = dataSpread.getSheetByName(targetName);
+  var dataSheet = getDataSheet(targetName);
   var dataLR = dataSheet.getLastRow();
   var updData = dataSheet.getRange(2, 2, dataLR -1, 17).getValues();
 
@@ -223,12 +231,11 @@ function getCategorySheetData(targetName){
   return result;
 }
 
-officialSheetDataCache = [];
-
-function makeOfficialSheetDataCache() {
+function getOfficialSheetDataList() {
+  if (getOfficialSheetDataList.memo) { return getOfficialSheetDataList.memo; }
+  getOfficialSheetDataList.memo = [];
   Logger.log("公式変更/追加シートデータ取得");
-  var dataSpread = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1O1hD48IWzzpGDwKOYlAraTCdO0EzfO1uRrKZ1Ut1luA/edit#gid=1015594370");
-  var dataSheet = dataSpread.getSheetByName("公式変更/追加");
+  var dataSheet = getDataSheet("公式変更/追加");
   var dataLR = dataSheet.getLastRow();
   var updData = dataSheet.getRange(3, 2, dataLR -1, 17).getValues();
 
@@ -241,7 +248,7 @@ function makeOfficialSheetDataCache() {
       category = "アクセサリー";
     }
     if (updRare == "si" || updRare == "go") {
-      officialSheetDataCache.push({
+      getOfficialSheetDataList.memo.push({
         no: d[0],
         category: category,
         values: d,
@@ -249,43 +256,45 @@ function makeOfficialSheetDataCache() {
       })
     }
   }
+  return getOfficialSheetDataList.memo;
 }
 
 function getOfficialSheetData(targetName) {
-  if (officialSheetDataCache.length === 0){
-    makeOfficialSheetDataCache();
-  }
-  Logger.log("取得数: %s", officialSheetDataCache.length);
-  var result = officialSheetDataCache.filter(function (value) {
+  officialSheetData = getOfficialSheetDataList();
+  Logger.log("取得数: %s", officialSheetData.length);
+  var result = officialSheetData.filter(function (value) {
     return value.category == targetName;
   });
   return result;
 }
 
 function margeOfficialToCategorySheet(officialDataList, categoryDataList){
-  var officialIncludeNoList = officialDataList.map(function (value) { return value.no });
+  var officialIncludeNoList = officialDataList.reduce(function (ac, v) {ac[v.no] = true; return ac}, {});
   var newList = categoryDataList.filter(function (value) {
-    return !officialIncludeNoList.includes(value.no);
+    return !(officialIncludeNoList[value.no] === true);
   });
 
   return newList.concat(officialDataList);
 }
 
 function writeData(targetName, values){
-  var localSpread = SpreadsheetApp.getActiveSpreadsheet();
-  var toSheet = localSpread.getSheetByName(targetName);
+  var toSheet = getLocalSheet(targetName);
   var endR = toSheet.getLastRow();
-  toSheet.getRange(2, 1, endR -1, 17).clear({contentsOnly: true});
+  toSheet.getRange(2, 1, endR -1, 18).clear({contentsOnly: true});
   if (values.length > endR - 1){
     toSheet.insertRows(endR+1, values.length-(endR-1));
   }
   var dataList = values.map(function (value) { return [value.has].concat(value.values); });
-  toSheet.getRange(2, 1, dataList.length+1, 18).setValues(dataList);
+  toSheet.getRange(2, 1, dataList.length, 18).setValues(dataList);
+  // ソート
+  localLR = toSheet.getLastRow();
+  toSheet.getRange(2, 1, localLR, 19).sort(2);
 }
 
 function setHasData(hasList, values){
   var hash = values.reduce(function (ac, v) {
     ac[v.no] = v;
+    return ac;
   }, {});
   hasList.forEach(function (d) {
     hash[d.no].has = d.has;
@@ -293,20 +302,34 @@ function setHasData(hasList, values){
 }
 
 function dataUpdate(targetList){
+  Logger.clear();
+  Logger.log("start update");
+  var logRange = getLocalSheet("コーデ検索").getRange("D24");
+  setScriptStatusStart(logRange);
   targetList.forEach(function (target) {
-    Logger.log("所持リスト取得: %s", target);
-    setStartLog("所持リスト取得");
-    var nowHasList = getHasList(target);
-    Logger.log("カテゴリシート取得");
-    var categolyData = getCategorySheetData(target);
-    Logger.log("公式追加/更新シート取得");
-    var officialData = getOfficialSheetData(target);
-    Logger.log("データマージ");
-    var data = margeOfficialToCategorySheet(officialData, categolyData);
-    setHasData(nowHasList, data);
-    Logger.log("書き出し");
-    writeData(target, data);
+    setStartLog("更新: " + target);
+    setScriptStatusNow(logRange, target + "を更新中です。");
+    try {
+      Logger.log("所持リスト取得: %s", target);
+      var nowHasList = getHasList(target);
+      Logger.log("カテゴリシート取得");
+      var categolyData = getCategorySheetData(target);
+      Logger.log("公式追加/更新シート取得");
+      var officialData = getOfficialSheetData(target);
+      Logger.log("データマージ");
+      var data = margeOfficialToCategorySheet(officialData, categolyData);
+      setHasData(nowHasList, data);
+      Logger.log("書き出し");
+      writeData(target, data);
+      setEndLog(2, "正常終了: " + target);
+    } catch(e) {
+      Logger.log(e);
+      setEndLog(2, e);
+      setScriptStatusError(logRange);
+    }
   });
+  setScriptStatusEnd(logRange);
+  Logger.log("end update");
 }
 
 function updateTest() {
