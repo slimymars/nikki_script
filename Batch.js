@@ -18,9 +18,6 @@ function setTriggerOfDay(){
   // アクセ
   triggerDay.setMinutes(20);
   ScriptApp.newTrigger("updateAcc").timeBased().at(triggerDay).create();
-  triggerDay.setMinutes(30);
-  ScriptApp.newTrigger("updateAccOfficial").timeBased().at(triggerDay).create();
-  
 }
 
 // 月トリガー
@@ -87,13 +84,7 @@ function deleteTrigger(func) {
 // 共通処理（メイン）
 function upd(targetList, triggerName){
   Logger.log(targetList);
-  updateDataMain(targetList);
-  deleteTrigger(triggerName);
-}
-// 共通処理（公式追加変更）
-function updOf(targetList, triggerName){
-  Logger.log(targetList);
-  updateDataOfficial(targetList);
+  updateData(targetList);
   deleteTrigger(triggerName);
 }
 
@@ -101,24 +92,18 @@ function updOf(targetList, triggerName){
 function update1() {
   var targetList = ["ヘアスタイル", "ドレス", "コート", "トップス"];
   upd(targetList, "update1");
-  updOf(targetList, "update1");
 }
 
 // ボトムス・靴下・シューズ・メイクのアイテム情報を取得
 function update2() {
   var targetList = ["ボトムス", "靴下", "シューズ", "メイク"];
   upd(targetList, "update2");
-  updOf(targetList, "update2");
 }
 
 // アクセの情報を取得
 function updateAcc() {
   var targetList = ["アクセサリー"];
   upd(targetList, "updateAcc");
-}
-function updateAccOfficial() {
-  var targetList = ["アクセサリー"];
-  updOf(targetList, "updateAccOfficial");
 }
 
 // コロッセオのコーデを更新（前半9件）
