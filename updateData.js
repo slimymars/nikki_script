@@ -199,12 +199,12 @@ function getDataSheet(target) {
 function getHasList(targetName){
   var localSheet = getLocalSheet(targetName);
   var localLR = localSheet.getLastRow();
-  var localData = localSheet.getRange(2, 1, localLR -1, 2).getValues();
+  var localData = localSheet.getRange(2, 1, localLR -1, 19).getValues();
 
-  var result = [];
+  var result = {};
   for (var i = 0; i < localData.length; i++) {
-    if (localData[i][0] !== "") {
-      result.push({no: localData[i][1], has: localData[i][0]});
+    if (localData[i][0] !== "" || localData[i][18] !== "") {
+      result[localData[i][1]] =  {has: localData[i][0], ep: localData[i][18], values: localData[i].slice(1, 18)};
     }
   }
   return result;
@@ -217,15 +217,11 @@ function getCategorySheetData(targetName){
   var dataLR = dataSheet.getLastRow();
   var updData = dataSheet.getRange(2, 2, dataLR -1, 17).getValues();
 
-  var result = [];
+  var result = {};
 
   for (var i = 0; i < updData.length; i++) {
     var d = updData[i];
-    result.push({
-      no: d[0],
-      values: d,
-      has: ""
-    });
+    result[d[0]] = { values: d, has: ""};
   }
 
   return result;
@@ -260,21 +256,21 @@ function getOfficialSheetDataList() {
 }
 
 function getOfficialSheetData(targetName) {
-  officialSheetData = getOfficialSheetDataList();
+  var officialSheetData = getOfficialSheetDataList();
   Logger.log("取得数: %s", officialSheetData.length);
-  var result = officialSheetData.filter(function (value) {
-    return value.category == targetName;
-  });
-  return result;
+  return officialSheetData.reduce(function (ac, value) {
+    if (value.category != targetName) {
+      return ac;
+    }
+    ac[value.no] = {values: value.values, has: value.has};
+    return ac;
+  }, {});
 }
 
 function margeOfficialToCategorySheet(officialDataList, categoryDataList){
-  var officialIncludeNoList = officialDataList.reduce(function (ac, v) {ac[v.no] = true; return ac}, {});
-  var newList = categoryDataList.filter(function (value) {
-    return !(officialIncludeNoList[value.no] === true);
-  });
-
-  return newList.concat(officialDataList);
+  for (var no in officialDataList) if (officialDataList.hasOwnProperty(no)) {
+    categoryDataList[no] = officialDataList[no];
+  }
 }
 
 function writeData(targetName, values){
@@ -284,21 +280,32 @@ function writeData(targetName, values){
   if (values.length > endR - 1){
     toSheet.insertRows(endR+1, values.length-(endR-1));
   }
-  var dataList = values.map(function (value) { return [value.has].concat(value.values); });
-  toSheet.getRange(2, 1, dataList.length, 18).setValues(dataList);
+  var dataList = [];
+  for (var key in values) if (values.hasOwnProperty(key)) {
+    var value = values[key];
+    var v = [value.has].concat(value.values);
+    if (value.hasOwnProperty("ep")){
+      v.push(value.ep);
+    } else {
+      v.push("");
+    }
+    dataList.push(v);
+  }
+  toSheet.getRange(2, 1, dataList.length, 19).setValues(dataList);
   // ソート
   localLR = toSheet.getLastRow();
   toSheet.getRange(2, 1, localLR, 19).sort(2);
 }
 
 function setHasData(hasList, values){
-  var hash = values.reduce(function (ac, v) {
-    ac[v.no] = v;
-    return ac;
-  }, {});
-  hasList.forEach(function (d) {
-    hash[d.no].has = d.has;
-  });
+  for (var no in hasList) if (hasList.hasOwnProperty(no)) {
+    if (values.hasOwnProperty(no)) {
+      values[no].has = hasList[no].has;
+      values[no].ep = hasList[no].ep;
+    } else {
+      values[no] = hasList[no];
+    }
+  }
 }
 
 function dataUpdate(targetList){
@@ -317,10 +324,10 @@ function dataUpdate(targetList){
       Logger.log("公式追加/更新シート取得");
       var officialData = getOfficialSheetData(target);
       Logger.log("データマージ");
-      var data = margeOfficialToCategorySheet(officialData, categolyData);
-      setHasData(nowHasList, data);
+      margeOfficialToCategorySheet(officialData, categolyData);
+      setHasData(nowHasList, categolyData);
       Logger.log("書き出し");
-      writeData(target, data);
+      writeData(target, categolyData);
       setEndLog(2, "正常終了: " + target);
     } catch(e) {
       Logger.log(e);
