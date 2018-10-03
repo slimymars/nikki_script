@@ -13,10 +13,9 @@ function koreMotteru(){
     addSheet.getRange(3, 2, addLR - 2, 1).clearContent();
     var category = ["ヘアスタイル", "ドレス", "コート", "トップス", "ボトムス", "靴下", "シューズ", "アクセサリー", "メイク"];
     Logger.log(addData.length + "件の追加を試みます。");
-    var repeatRow = addData.length;
     var delCnt = 0;
     
-    for (var i = 0; i < repeatRow; i++) {
+    for (var i = addData.length - 1; i >= 0; i--) {
       search : for (var index in category) {
         // 各シートの探索を行う
         setNowLog(2, addData[i][0] + "を検索しています。");
@@ -26,13 +25,12 @@ function koreMotteru(){
         var sheetLR = sheet.getLastRow();
         var sheetData = sheet.getRange(2, 3, sheetLR - 1, 1).getValues();
         for (var s = 0; s < sheetData.length; s++) {
-          if (returnHalfString(addData[i][0]) == returnHalfString(sheetData[s][0])) {
+          if (returnHalfString(addData[i][0].toString()) == returnHalfString(sheetData[s][0].toString())) {
             // 名称一致
             sheet.getRange(s + 2, 1).setValue("◯");
             
-            addSheet.deleteRow(i + 3 - delCnt);
+            addSheet.deleteRow(i + 3);
             addSheet.insertRows(addData.length + 3);
-            i - i -1;
             delCnt = delCnt + 1;
             break search;
           }
