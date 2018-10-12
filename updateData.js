@@ -116,7 +116,7 @@ function margeOfficialToCategorySheet(officialDataList, categoryDataList){
 function writeData(targetName, values){
   var toSheet = getLocalSheet(targetName);
   var endR = toSheet.getLastRow();
-  toSheet.getRange(2, 1, endR -1, 18).clear({contentsOnly: true});
+  toSheet.getRange(2, 1, endR -1, 19).clear({contentsOnly: true});
   var dataList = [];
   for (var key in values) if (values.hasOwnProperty(key)) {
     var value = values[key];
