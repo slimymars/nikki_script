@@ -1,4 +1,7 @@
 // 最新情報の取得 --------------------------------------------------------------------------------------------------- //
+// アクセサリー種定義
+var Accessories = ["頭飾り", "首飾り", "腕飾り", "手持品", "特殊", "腰飾り", "首飾り"];
+
 function updateData() {
   Logger.clear();
   var localSpread = SpreadsheetApp.getActiveSpreadsheet();
@@ -76,7 +79,7 @@ function getOfficialSheetDataList() {
     var d = updData[i];
     var category = d[2];
     var updRare = d[5]; // レア度ではなくSi or Goの文字列
-    if (category == "頭飾り" || category == "首飾り" || category == "腕飾り" || category == "手持品" || category == "特殊") {
+    if (Accessories.indexOf(category) >= 0) {
       // アクセのときは置換
       category = "アクセサリー";
     }
