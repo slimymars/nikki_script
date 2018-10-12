@@ -114,9 +114,6 @@ function writeData(targetName, values){
   var toSheet = getLocalSheet(targetName);
   var endR = toSheet.getLastRow();
   toSheet.getRange(2, 1, endR -1, 18).clear({contentsOnly: true});
-  if (values.length > endR - 1){
-    toSheet.insertRows(endR+1, values.length-(endR-1));
-  }
   var dataList = [];
   for (var key in values) if (values.hasOwnProperty(key)) {
     var value = values[key];
@@ -128,10 +125,13 @@ function writeData(targetName, values){
     }
     dataList.push(v);
   }
+  if (dataList.length > endR - 1){
+    toSheet.insertRowsAfter(endR, dataList.length-(endR-1));
+  }
   toSheet.getRange(2, 1, dataList.length, 19).setValues(dataList);
   // ソート
-  localLR = toSheet.getLastRow();
-  toSheet.getRange(2, 1, localLR, 19).sort(2);
+  var localLR = toSheet.getLastRow();
+  toSheet.getRange(2, 1, localLR - 1, 19).sort(2);
 }
 
 function setHasData(hasList, values){
